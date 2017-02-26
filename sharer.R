@@ -39,8 +39,8 @@ sharer_push <- function(code=NULL, to=NULL, type=c('console', 'file')[1],
   stopifnot(is.character(code), length(code) == 1, to %in% SHARER$HASH$name,
             type %in% c('console', 'file'), nchar(name) > 0, is.integer(id),
             nchar(store_id) > 0)
-  if (file.exists(code)) {
-    bric <- paste0(readLines(code), sep='\n', collapse='')
+  if (file.exists(code) && grepl('\\.r$', code, ignore.case=T)) {
+    bric <- paste0(readLines(code, warn=F), sep='\n', collapse='')
   } else if (nchar(code) > 0) {
     bric <- code
   } else { stop('Invalid input!') }
@@ -52,9 +52,41 @@ sharer_push <- function(code=NULL, to=NULL, type=c('console', 'file')[1],
   shr <- jsonlite::fromJSON(paste0('https://api.myjson.com/bins/', store_id))
   shr$brix[[as.character(as.integer(Sys.time()))]] <- c(headr, bric)
   re <- httr::PUT(paste0('https://api.myjson.com/bins/', store_id), body=shr, encode='json')
-  if (re$status_code != 200) stop('Upload error ', as.character(re$status_code), ' (-+_+)')
+  if (re$status_code == 200) {
+    invisible(0L)
+  } else {
+    stop('Upload error ', as.character(re$status_code), ' (-+_+)')
+  }
 }
 
-sharer_show <- function() {
-  
+sharer_show <- function(name=SHARER$NAME, id=SHARER$ID, store_id=SHARER$STORE_ID,
+                        trap=SHARER$FILES) {
+  stopifnot(rstudioapi::isAvailable(),
+            nchar(name) > 0, is.integer(id), nchar(store_id) > 0)
+  if (length(SHARER$IN) == 0 ||
+      all(sapply(SHARER$IN, function(b) if (grepl('T$', b[1])) T else F))) {
+    upd <- T
+    shr <- jsonlite::fromJSON(paste0('https://api.myjson.com/bins/', store_id))$brix
+    SHARER$IN <<- shr[sapply(shr, function(b) {
+      if (as.integer(unlist(strsplit(b[1], ''))[1]) == id) T else F
+    })]
+  }
+  if (length(SHARER$IN) == 0) return(message('No more code 4 u.'))
+  print(shr)
+  for (i in 1:length(SHARER$IN)) {
+    b <- SHARER$IN[[i]]
+    if (grepl('F$', b[1])) {
+      if (unlist(strsplit(b[1], ''))[3] == 'T') {  # case terminal / console
+        rstudioapi::sendToConsole(b[2], F)  # don't execute automatically
+      } else {  # case file
+        flnm <- file.path(trap,
+                          paste0('shr', format(Sys.time(), format='%d%b%H%M'), '.R'))
+        cat(b[2], file=flnm)  # redirect code string 2 file
+        file.edit(flnm)
+      }
+      # SHARER$IN[[i]][1] <<- paste0(paste0(strsplit(b[1], '')[[1]][1:3], collapse=''), 'T')
+      break
+    }
+  }
 }
+
