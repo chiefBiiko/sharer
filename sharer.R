@@ -30,10 +30,6 @@ SHARER$IN <- list()  # timestamped chr list of brix with
 # bric <- paste0(readLines('sharer.R'), sep='\n', collapse='')  # read-in .R 2 string
 # cat(bric, file='tert.R')  # redirect code string 2 file
 
-sharer_get <- function() {
-  
-}
-
 sharer_push <- function(code=NULL, to=NULL, type=c('console', 'file')[1],
                         name=SHARER$NAME, id=SHARER$ID, store_id=SHARER$STORE_ID) {
   stopifnot(is.character(code), length(code) == 1, to %in% SHARER$HASH$name,
@@ -59,21 +55,21 @@ sharer_push <- function(code=NULL, to=NULL, type=c('console', 'file')[1],
   }
 }
 
-sharer_show <- function(name=SHARER$NAME, id=SHARER$ID, store_id=SHARER$STORE_ID,
-                        trap=SHARER$FILES) {
-  stopifnot(rstudioapi::isAvailable(),
-            nchar(name) > 0, is.integer(id), nchar(store_id) > 0)
+sharer_show <- function(id=SHARER$ID, store_id=SHARER$STORE_ID, trap=SHARER$FILES) {
+  stopifnot(rstudioapi::isAvailable(), is.integer(id), nchar(store_id) > 0,
+            nchar(trap) > 0)
   if (length(SHARER$IN) == 0 ||
       all(sapply(SHARER$IN, function(b) if (grepl('T$', b[1])) T else F))) {
-    upd <- T
+    if (!readline('Pull from remote? [y/n] ') == 'y') return(NULL)
     shr <- jsonlite::fromJSON(paste0('https://api.myjson.com/bins/', store_id))$brix
     SHARER$IN <<- shr[sapply(shr, function(b) {
       if (as.integer(unlist(strsplit(b[1], ''))[1]) == id) T else F
     })]
   }
   if (length(SHARER$IN) == 0) return(message('No more code 4 u.'))
-  print(shr)
-  for (i in 1:length(SHARER$IN)) {
+  print(SHARER$IN)
+  i <- 1
+  while (i <= length(SHARER$IN)) {
     b <- SHARER$IN[[i]]
     if (grepl('F$', b[1])) {
       if (unlist(strsplit(b[1], ''))[3] == 'T') {  # case terminal / console
@@ -84,9 +80,10 @@ sharer_show <- function(name=SHARER$NAME, id=SHARER$ID, store_id=SHARER$STORE_ID
         cat(b[2], file=flnm)  # redirect code string 2 file
         file.edit(flnm)
       }
-      # SHARER$IN[[i]][1] <<- paste0(paste0(strsplit(b[1], '')[[1]][1:3], collapse=''), 'T')
+      SHARER$IN[[i]][1] <<- paste0(paste0(strsplit(b[1], '')[[1]][1:3], collapse=''), 'T')
       break
     }
+    i <- i + 1
   }
+  invisible(0L)
 }
-
