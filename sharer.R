@@ -1,5 +1,7 @@
 # sharer
 #
+# TODO: Flushing the remote store once in a while
+#
 # Remote data format in R
 #   list(hash=data.frame(name=c('Biiko', 'Balou', 'Christian'),
 #                        id=as.integer(c(1, 2, 3)), stringsAsFactors=F),
@@ -30,12 +32,13 @@ SHARER$IN <- list()  # timestamped chr list of brix with
 # bric <- paste0(readLines('sharer.R'), sep='\n', collapse='')  # read-in .R 2 string
 # cat(bric, file='tert.R')  # redirect code string 2 file
 
-sharer_push <- function(code=NULL, to=NULL, type=c('console', 'file')[1],
+sharer_push <- function(code=NULL, to=NULL,
+                        type=if (grepl('\\.r(md)?$', code, ignore.case=T)) 'file' else 'console',
                         name=SHARER$NAME, id=SHARER$ID, store_id=SHARER$STORE_ID) {
   stopifnot(is.character(code), length(code) == 1, to %in% SHARER$HASH$name,
             type %in% c('console', 'file'), nchar(name) > 0, is.integer(id),
             nchar(store_id) > 0)
-  if (file.exists(code) && grepl('\\.r$', code, ignore.case=T)) {
+  if (file.exists(code) && grepl('\\.r(md)?$', code, ignore.case=T)) {
     bric <- paste0(readLines(code, warn=F), sep='\n', collapse='')
   } else if (nchar(code) > 0) {
     bric <- code
@@ -49,7 +52,8 @@ sharer_push <- function(code=NULL, to=NULL, type=c('console', 'file')[1],
   shr$brix[[as.character(as.integer(Sys.time()))]] <- c(headr, bric)
   re <- httr::PUT(paste0('https://api.myjson.com/bins/', store_id), body=shr, encode='json')
   if (re$status_code == 200) {
-    invisible(0L)
+    message('Upload complete.')
+    return(0L)
   } else {
     stop('Upload error ', as.character(re$status_code), ' (-+_+)')
   }
@@ -67,7 +71,7 @@ sharer_show <- function(id=SHARER$ID, store_id=SHARER$STORE_ID, trap=SHARER$FILE
     })]
   }
   if (length(SHARER$IN) == 0) return(message('No more code 4 u.'))
-  print(SHARER$IN)
+  # print(SHARER$IN)
   i <- 1
   while (i <= length(SHARER$IN)) {
     b <- SHARER$IN[[i]]
@@ -76,7 +80,8 @@ sharer_show <- function(id=SHARER$ID, store_id=SHARER$STORE_ID, trap=SHARER$FILE
         rstudioapi::sendToConsole(b[2], F)  # don't execute automatically
       } else {  # case file
         flnm <- file.path(trap,
-                          paste0('shr', format(Sys.time(), format='%d%b%H%M'), '.R'))
+                          paste0(format(Sys.time(), format='%d%b%H%M'),
+                                 if (grepl("```", b[2])) '.Rmd' else '.R'))
         cat(b[2], file=flnm)  # redirect code string 2 file
         file.edit(flnm)
       }
@@ -85,5 +90,5 @@ sharer_show <- function(id=SHARER$ID, store_id=SHARER$STORE_ID, trap=SHARER$FILE
     }
     i <- i + 1
   }
-  invisible(0L)
+  return(0L)
 }
