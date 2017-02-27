@@ -1,21 +1,19 @@
 # sharer
 #
-# TODO: Flushing the remote store once in a while
+# TODO: Flushing the remote store after every pull
 #
 # Remote data format in R
 #   list(hash=data.frame(name=c('Biiko', 'Balou', 'Christian'),
 #                        id=as.integer(c(1, 2, 3)), stringsAsFactors=F),
 #        brix=list())
 
-lapply(list('jsonlite', 'httr'), function(p) {
+lapply(list('rstudioapi', 'jsonlite', 'httr'), function(p) {
   if (!p %in% .packages(T)) install.packages(p)
 })
 
 SHARER <- list()
 SHARER$NAME <- 'Biiko'  # 'Balou', 'Christian'
 SHARER$STORE_ID <- 'q1h39'
-SHARER$FILES <- file.path(.libPaths()[1], 'sharer')
-if (!dir.exists(SHARER$FILES)) dir.create(SHARER$FILES)
 SHARER$ID <- sapply(list(SHARER$NAME), function(n) {
   SHARER$HASH <<- jsonlite::fromJSON(paste0('https://api.myjson.com/bins/', SHARER$STORE_ID))$hash
   return(SHARER$HASH[SHARER$HASH$name == n, 'id'])  # ur personal ID
@@ -45,7 +43,7 @@ sharer_push <- function(code=NULL, to=NULL,
   } else { stop('Invalid input!') }
   if (type == 'console') type.code <- 'T' else type.code <- 'F'
   headr <- paste0(as.character(SHARER$HASH[SHARER$HASH$name == to, 'id']),  # receiver
-                  id,  # sender
+                  as.character(id),  # sender
                   type.code,  # is code meant 4 console ('T') or file ('F')?
                   'F')  # it has not been read
   shr <- jsonlite::fromJSON(paste0('https://api.myjson.com/bins/', store_id))
@@ -53,24 +51,23 @@ sharer_push <- function(code=NULL, to=NULL,
   re <- httr::PUT(paste0('https://api.myjson.com/bins/', store_id), body=shr, encode='json')
   if (re$status_code == 200) {
     message('Upload complete.')
-    return(0L)
+    return(invisible(0L))
   } else {
     stop('Upload error ', as.character(re$status_code), ' (-+_+)')
   }
 }
 
-sharer_show <- function(id=SHARER$ID, store_id=SHARER$STORE_ID, trap=SHARER$FILES) {
-  stopifnot(rstudioapi::isAvailable(), is.integer(id), nchar(store_id) > 0,
-            nchar(trap) > 0)
+sharer_show <- function(id=SHARER$ID, store_id=SHARER$STORE_ID) {
+  stopifnot(rstudioapi::isAvailable(), is.integer(id), nchar(store_id) > 0)
   if (length(SHARER$IN) == 0 ||
       all(sapply(SHARER$IN, function(b) if (grepl('T$', b[1])) T else F))) {
-    if (!readline('Pull from remote? [y/n] ') == 'y') return(NULL)
+    if (!readline('Pull from remote? [y/n] ') == 'y') return(invisible(NULL))
     shr <- jsonlite::fromJSON(paste0('https://api.myjson.com/bins/', store_id))$brix
     SHARER$IN <<- shr[sapply(shr, function(b) {
       if (as.integer(unlist(strsplit(b[1], ''))[1]) == id) T else F
     })]
   }
-  if (length(SHARER$IN) == 0) return(message('No more code 4 u.'))
+  if (length(SHARER$IN) == 0) return(message('No more code 4 u ... (-+_+)'))
   # print(SHARER$IN)
   i <- 1
   while (i <= length(SHARER$IN)) {
@@ -79,9 +76,10 @@ sharer_show <- function(id=SHARER$ID, store_id=SHARER$STORE_ID, trap=SHARER$FILE
       if (unlist(strsplit(b[1], ''))[3] == 'T') {  # case terminal / console
         rstudioapi::sendToConsole(b[2], F)  # don't execute automatically
       } else {  # case file
-        flnm <- file.path(trap,
-                          paste0(format(Sys.time(), format='%d%b%H%M'),
-                                 if (grepl("```", b[2])) '.Rmd' else '.R'))
+        dir.create(temp.dir <- tempfile())
+        flnm <- file.path(temp.dir,
+                          paste0(as.character(as.integer(Sys.time())),
+                                 if (grepl('```', b[2])) '.Rmd' else '.R'))
         cat(b[2], file=flnm)  # redirect code string 2 file
         file.edit(flnm)
       }
@@ -90,5 +88,5 @@ sharer_show <- function(id=SHARER$ID, store_id=SHARER$STORE_ID, trap=SHARER$FILE
     }
     i <- i + 1
   }
-  return(0L)
+  return(invisible(0L))
 }
