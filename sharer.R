@@ -1,7 +1,5 @@
 # sharer
 #
-# TODO: Flushing the remote store after every pull
-#
 # Remote data format in R
 #   list(hash=data.frame(name=c('Biiko', 'Balou', 'Christian'),
 #                        id=as.integer(c(1, 2, 3)), stringsAsFactors=F),
@@ -21,14 +19,11 @@ SHARER$ID <- sapply(list(SHARER$NAME), function(n) {
 SHARER$IN <- list()  # timestamped chr list of brix with
 #                      4 char string as first vector item,
 #                      code string as second vector item;
-#                      4 char code:
+#                      4 char string:
 #                        1st id indicating receiver
 #                        2nd id indicating sender
 #                        3rd 'T' 4 console, 'F' 4 file
 #                        4th 'T' 4 read 'F' 4 not read
-
-# bric <- paste0(readLines('sharer.R'), sep='\n', collapse='')  # read-in .R 2 string
-# cat(bric, file='tert.R')  # redirect code string 2 file
 
 sharer_push <- function(code=NULL, to=NULL,
                         type=if (grepl('\\.r(md)?$', code, ignore.case=T)) 'file' else 'console',
@@ -62,19 +57,21 @@ sharer_show <- function(id=SHARER$ID, store_id=SHARER$STORE_ID) {
   if (length(SHARER$IN) == 0 ||
       all(sapply(SHARER$IN, function(b) if (grepl('T$', b[1])) T else F))) {
     if (!readline('Pull from remote? [y/n] ') == 'y') return(invisible(NULL))
-    shr <- jsonlite::fromJSON(paste0('https://api.myjson.com/bins/', store_id))$brix
-    SHARER$IN <<- shr[sapply(shr, function(b) {
+    shr <- jsonlite::fromJSON(paste0('https://api.myjson.com/bins/', store_id))
+    SHARER$IN <<- shr$brix[sapply(shr$brix, function(b) {
       if (as.integer(unlist(strsplit(b[1], ''))[1]) == id) T else F
     })]
+    shr.flushd <- list(hash=shr$hash, brix=shr$brix[!shr$brix %in% SHARER$IN])
+    re <- httr::PUT(paste0('https://api.myjson.com/bins/', store_id), body=shr.flushd, encode='json')
+    if (re$status_code != 200) stop('Flush error (-*.*)')
   }
   if (length(SHARER$IN) == 0) return(message('No more code 4 u ... (-+_+)'))
-  # print(SHARER$IN)
   i <- 1
   while (i <= length(SHARER$IN)) {
     b <- SHARER$IN[[i]]
     if (grepl('F$', b[1])) {
       if (unlist(strsplit(b[1], ''))[3] == 'T') {  # case terminal / console
-        rstudioapi::sendToConsole(b[2], F)  # don't execute automatically
+        rstudioapi::sendToConsole(gsub('\\n$', '', b[2]), F)  # don't auto-execute
       } else {  # case file
         dir.create(temp.dir <- tempfile())
         flnm <- file.path(temp.dir,
