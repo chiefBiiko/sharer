@@ -36,10 +36,9 @@ sharer_push <- function(code=NULL, to=NULL,
   } else if (nchar(code) > 0) {
     bric <- code
   } else { stop('Invalid input!') }
-  if (type == 'console') type.code <- 'T' else type.code <- 'F'
   headr <- paste0(as.character(SHARER$HASH[SHARER$HASH$name == to, 'id']),  # receiver
                   as.character(id),  # sender
-                  type.code,  # is code meant 4 console ('T') or file ('F')?
+                  if (type == 'console') 'T' else 'F',  # is code meant 4 console or file?
                   'F')  # it has not been read
   shr <- jsonlite::fromJSON(paste0('https://api.myjson.com/bins/', store_id))
   shr$brix[[as.character(as.integer(Sys.time()))]] <- c(headr, bric)
@@ -65,10 +64,10 @@ sharer_show <- function(id=SHARER$ID, store_id=SHARER$STORE_ID) {
     shr.flushd <- list(hash=shr$hash, brix=shr$brix[!shr$brix %in% SHARER$IN])
     re <- httr::PUT(paste0('https://api.myjson.com/bins/', store_id), body=shr.flushd, encode='json')
     if (re$status_code != 200) stop('Flush error (-*.*)') else message('Flushed ( Y )')
+    message(as.character(length(SHARER$IN)), ' code chunk',
+            if (length(SHARER$IN) > 1) 's' else '',
+            ' pulled into memory.')
   }
-  message(as.character(length(SHARER$IN)), ' code chunk',
-          if (length(SHARER$IN) > 1) 's' else '',
-          ' pulled into memory.')
   i <- 1
   while (i <= length(SHARER$IN)) {
     b <- SHARER$IN[[i]]
