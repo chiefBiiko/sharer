@@ -63,7 +63,7 @@ sharer_show <- function(id=SHARER$ID, store_id=SHARER$STORE_ID) {
     if (length(SHARER$IN) == 0) return(message('No more code 4 u ... (-+_+)'))
     shr.flushd <- list(hash=shr$hash, brix=shr$brix[!shr$brix %in% SHARER$IN])
     re <- httr::PUT(paste0('https://api.myjson.com/bins/', store_id), body=shr.flushd, encode='json')
-    if (re$status_code != 200) stop('Flush error (-*.*)') else message('Flushed ( Y )')
+    if (re$status_code == 200) message('Flushed ( Y )') else stop('Flush error (-*.*)')
     message(as.character(length(SHARER$IN)), ' code chunk',
             if (length(SHARER$IN) > 1) 's' else '',
             ' pulled into memory.')
