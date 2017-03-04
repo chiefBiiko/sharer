@@ -44,7 +44,7 @@ sharer_push <- function(code=NULL, to=NULL,
   shr$brix[[as.character(as.integer(Sys.time()))]] <- c(headr, bric)
   re <- httr::PUT(paste0('https://api.myjson.com/bins/', store_id), body=shr, encode='json')
   if (re$status_code == 200) {
-    message('Upload complete.')
+    message('[200] Push complete.')
     return(invisible(0L))
   } else {
     stop('Upload error ', as.character(re$status_code), ' (-+_+)')
@@ -61,12 +61,12 @@ sharer_show <- function(id=SHARER$ID, store_id=SHARER$STORE_ID) {
       if (as.integer(unlist(strsplit(b[1], ''))[1]) == id) T else F
     })]
     if (length(SHARER$IN) == 0) return(message('No more code 4 u ... (-+_+)'))
-    shr.flushd <- list(hash=shr$hash, brix=shr$brix[!shr$brix %in% SHARER$IN])
-    re <- httr::PUT(paste0('https://api.myjson.com/bins/', store_id), body=shr.flushd, encode='json')
-    if (re$status_code == 200) message('Flushed ( Y )') else stop('Flush error (-*.*)')
     message(as.character(length(SHARER$IN)), ' code chunk',
             if (length(SHARER$IN) > 1) 's' else '',
             ' pulled into memory.')
+    shr.flushd <- list(hash=shr$hash, brix=shr$brix[!shr$brix %in% SHARER$IN])
+    re <- httr::PUT(paste0('https://api.myjson.com/bins/', store_id), body=shr.flushd, encode='json')
+    if (re$status_code == 200) message('Flushed remote ( Y )') else stop('Flush error (-*.*)')
   }
   i <- 1
   while (i <= length(SHARER$IN)) {
@@ -87,5 +87,7 @@ sharer_show <- function(id=SHARER$ID, store_id=SHARER$STORE_ID) {
     }
     i <- i + 1
   }
+  message(sum(sapply(SHARER$IN, function(b) if (grepl('F$', b[1])) T else F)),
+          ' left...')
   return(invisible(0L))
 }
