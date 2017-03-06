@@ -28,9 +28,9 @@ SHARER$IN <- list()  # timestamped chr list of brix with
 sharer_push <- function(code=NULL, to=NULL,
                         type=if (grepl('\\.r(md)?$', code, ignore.case=T)) 'file' else 'console',
                         name=SHARER$NAME, id=SHARER$ID, store_id=SHARER$STORE_ID) {
-  stopifnot(is.character(code), length(code) == 1, to %in% SHARER$HASH$name,
-            type %in% c('console', 'file'), nchar(name) > 0, is.integer(id),
-            nchar(store_id) > 0)
+  stopifnot(is.character(code), length(code) == 1, !missing(to),
+            to %in% SHARER$HASH$name, type %in% c('console', 'file'),
+            nchar(name) > 0, is.integer(id), nchar(store_id) > 0)
   if (file.exists(code) && grepl('\\.r(md)?$', code, ignore.case=T)) {
     bric <- paste0(readLines(code, warn=F), sep='\n', collapse='')
   } else if (nchar(code) > 0) {
