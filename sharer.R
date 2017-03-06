@@ -25,11 +25,13 @@ SHARER$IN <- list()  # timestamped chr list of brix with
 #                        3rd 'T' 4 console, 'F' 4 file
 #                        4th 'T' 4 read 'F' 4 not read
 
-sharer_push <- function(code=NULL, to=NULL,
+sharer_push <- function(code=NULL, to=NULL, comment='',
                         type=if (grepl('\\.r(md)?$', code, ignore.case=T)) 'file' else 'console',
                         name=SHARER$NAME, id=SHARER$ID, store_id=SHARER$STORE_ID) {
-  stopifnot(is.character(code), length(code) == 1, !missing(to),
-            to %in% SHARER$HASH$name, type %in% c('console', 'file'),
+  stopifnot(is.character(code), length(code) == 1,
+            !missing(to), to %in% SHARER$HASH$name,
+            is.character(comment), length(comment) == 1,
+            type %in% c('console', 'file'),
             nchar(name) > 0, is.integer(id), nchar(store_id) > 0)
   if (file.exists(code) && grepl('\\.r(md)?$', code, ignore.case=T)) {
     bric <- paste0(readLines(code, warn=F), sep='\n', collapse='')
@@ -41,7 +43,7 @@ sharer_push <- function(code=NULL, to=NULL,
                   if (type == 'console') 'T' else 'F',  # is code meant 4 console or file?
                   'F')  # it has not been read
   shr <- jsonlite::fromJSON(paste0('https://api.myjson.com/bins/', store_id))
-  shr$brix[[as.character(as.integer(Sys.time()))]] <- c(headr, bric)
+  shr$brix[[as.character(as.integer(Sys.time()))]] <- c(headr, bric, comment)
   re <- httr::PUT(paste0('https://api.myjson.com/bins/', store_id), body=shr, encode='json')
   if (re$status_code == 200) {
     message('[200] Push complete.')
@@ -74,6 +76,8 @@ sharer_show <- function(id=SHARER$ID, store_id=SHARER$STORE_ID) {
     if (grepl('F$', b[1])) {
       if (unlist(strsplit(b[1], ''))[3] == 'T') {  # case terminal / console
         rstudioapi::sendToConsole(gsub('\\n$', '', b[2]), F)  # don't auto-execute
+        message('From ', SHARER$HASH[SHARER$HASH$id == as.integer(strsplit(b[1], '')[[1]][2]), 'name'],
+                if (b[3] != '') paste0(':\n', b[3]) else '')
       } else {  # case file
         dir.create(temp.dir <- tempfile())
         flnm <- file.path(temp.dir,
@@ -81,6 +85,8 @@ sharer_show <- function(id=SHARER$ID, store_id=SHARER$STORE_ID) {
                                  if (grepl('```', b[2])) '.Rmd' else '.R'))
         cat(b[2], file=flnm)  # redirect code string 2 file
         file.edit(flnm)
+        message('From ', SHARER$HASH[SHARER$HASH$id == as.integer(strsplit(b[1], '')[[1]][2]), 'name'],
+                if (b[3] != '') paste0(':\n', b[3]) else '')
       }
       SHARER$IN[[i]][1] <<- paste0(paste0(strsplit(b[1], '')[[1]][1:3], collapse=''), 'T')
       break
