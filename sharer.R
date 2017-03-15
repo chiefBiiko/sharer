@@ -1,9 +1,4 @@
 # sharer
-#
-# Remote data format in R
-#   list(hash=data.frame(name=c('Biiko', 'Balou', 'Christian'),
-#                        id=as.integer(c(1, 2, 3)), stringsAsFactors=F),
-#        brix=list())
 
 lapply(list('rstudioapi', 'jsonlite', 'httr'), function(p) {
   if (!p %in% .packages(T)) install.packages(p)
@@ -16,14 +11,7 @@ SHARER$ID <- sapply(list(SHARER$NAME), function(n) {
   SHARER$HASH <<- jsonlite::fromJSON(paste0('https://api.myjson.com/bins/', SHARER$STORE_ID))$hash
   return(SHARER$HASH[SHARER$HASH$name == n, 'id'])  # ur personal ID
 })
-SHARER$IN <- list()  # timestamped chr list of brix with
-#                      4 char string as first vector item,
-#                      code string as second vector item;
-#                      4 char string:
-#                        1st id indicating receiver
-#                        2nd id indicating sender
-#                        3rd 'T' 4 console, 'F' 4 file
-#                        4th 'T' 4 read 'F' 4 not read
+SHARER$IN <- list()
 
 sharer_push <- function(code=NULL, to=NULL, comment='',
                         type=if (grepl('\\.r(md)?$', code, ignore.case=T)) 'file' else 'console',
@@ -76,8 +64,6 @@ sharer_show <- function(id=SHARER$ID, store_id=SHARER$STORE_ID) {
     if (grepl('F$', b[1])) {
       if (unlist(strsplit(b[1], ''))[3] == 'T') {  # case terminal / console
         rstudioapi::sendToConsole(gsub('\\n$', '', b[2]), F)  # don't auto-execute
-        message('From ', SHARER$HASH[SHARER$HASH$id == as.integer(strsplit(b[1], '')[[1]][2]), 'name'],
-                if (b[3] != '') paste0(':\n', b[3]) else '')
       } else {  # case file
         dir.create(temp.dir <- tempfile())
         flnm <- file.path(temp.dir,
@@ -85,9 +71,9 @@ sharer_show <- function(id=SHARER$ID, store_id=SHARER$STORE_ID) {
                                  if (grepl('```', b[2])) '.Rmd' else '.R'))
         cat(b[2], file=flnm)  # redirect code string 2 file
         file.edit(flnm)
-        message('From ', SHARER$HASH[SHARER$HASH$id == as.integer(strsplit(b[1], '')[[1]][2]), 'name'],
-                if (b[3] != '') paste0(':\n', b[3]) else '')
       }
+      message('From ', SHARER$HASH[SHARER$HASH$id == as.integer(strsplit(b[1], '')[[1]][2]), 'name'],
+              if (b[3] != '') paste0(':\n', b[3]) else '')
       SHARER$IN[[i]][1] <<- paste0(paste0(strsplit(b[1], '')[[1]][1:3], collapse=''), 'T')
       break
     }
