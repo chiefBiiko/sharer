@@ -79,7 +79,6 @@ sharer_show <- function(id=SHARER$ID, store_id=SHARER$STORE_ID) {
     }
     i <- i + 1
   }
-  message(sum(sapply(SHARER$IN, function(b) if (grepl('F$', b[1])) T else F)),
-          ' left...')
+  message(sum(sapply(SHARER$IN, function(b) if (grepl('F$', b[1])) T else F)), ' left...')
   return(invisible(0L))
 }
